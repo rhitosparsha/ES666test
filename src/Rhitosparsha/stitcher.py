@@ -112,7 +112,7 @@ class PanaromaStitcher():
         mask_warped = np.sum(warped_img, axis=2) > 0  # Non-zero pixels in warped image
         mask_base = np.sum(base_img, axis=2) > 0      # Non-zero pixels in base image
 
-        blended_image = np.zeros_like(base_img)
+        blended_image = np.zeros_like(warped_img)
 
         # Blend images using weighted average where both images have pixels
         blended_image[mask_warped] = warped_img[mask_warped]
