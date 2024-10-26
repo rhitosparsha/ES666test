@@ -107,28 +107,35 @@ class PanaromaStitcher():
         return base_img, homography_matrix_list
 
     def blend_images(self, warped_img, base_img):
-        # Ensure both images are the same size before blending
-        height_min = min(warped_img.shape[0], base_img.shape[0])
-        width_min = min(warped_img.shape[1], base_img.shape[1])
+        # Get the dimensions of the images
+        h1, w1 = warped_img.shape[:2]
+        h2, w2 = base_img.shape[:2]
 
-        warped_img_cropped = warped_img[:height_min, :width_min]
-        base_img_cropped = base_img[:height_min, :width_min]
+        # Create an empty canvas for the blended image
+        blended_height = max(h1, h2)
+        blended_width = w1 + w2
+        blended_image = np.zeros((blended_height, blended_width, 3), dtype=np.uint8)
 
-        # Create masks
-        mask_warped = np.sum(warped_img_cropped, axis=2) > 0
-        mask_base = np.sum(base_img_cropped, axis=2) > 0
+        # Place the base image in the blended canvas
+        blended_image[:h2, :w2] = base_img
 
-        blended_image = np.zeros_like(warped_img_cropped)
+        # Determine the region where the warped image overlaps with the base image
+        x_offset = 0
+        y_offset = 0
 
-        blended_image[mask_warped] = warped_img_cropped[mask_warped]
-        blended_image[mask_base] = base_img_cropped[mask_base]
+        # Blend the images using a mask based on the alpha
+        for y in range(h1):
+            for x in range(w1):
+                if y + y_offset < blended_height and x + x_offset < blended_width:
+                    warped_pixel = warped_img[y, x]
+                    base_pixel = blended_image[y + y_offset, x + x_offset]
 
-        # Combine the overlapping regions
-        overlap_mask = mask_warped & mask_base
-        if np.any(overlap_mask):
-            # Average the overlapping pixels from both images
-            blended_image[overlap_mask] = (
-                warped_img_cropped[overlap_mask] * 0.5 + base_img_cropped[overlap_mask] * 0.5
-            )
+                    # If the warped image pixel is not black, blend it
+                    if not np.array_equal(warped_pixel, [0, 0, 0]):  # Assuming black is the background
+                        # Simple linear blend based on pixel intensity
+                        alpha = 0.5  # You can adjust this value for more or less blending
+                        blended_image[y + y_offset, x + x_offset] = (
+                            alpha * warped_pixel + (1 - alpha) * base_pixel
+                        )
 
         return blended_image.astype(np.uint8)
