@@ -107,22 +107,28 @@ class PanaromaStitcher():
         return base_img, homography_matrix_list
 
     def blend_images(self, warped_img, base_img):
-        # Create a mask for the warped image
-        height, width = base_img.shape[:2]
-        mask_warped = np.sum(warped_img, axis=2) > 0  # Non-zero pixels in warped image
-        mask_base = np.sum(base_img, axis=2) > 0      # Non-zero pixels in base image
+        # Ensure both images are the same size before blending
+        height_min = min(warped_img.shape[0], base_img.shape[0])
+        width_min = min(warped_img.shape[1], base_img.shape[1])
 
-        blended_image = np.zeros_like(warped_img)
+        warped_img_cropped = warped_img[:height_min, :width_min]
+        base_img_cropped = base_img[:height_min, :width_min]
 
-        # Blend images using weighted average where both images have pixels
-        blended_image[mask_warped] = warped_img[mask_warped]
-        blended_image[mask_base] = base_img[mask_base]
+        # Create masks
+        mask_warped = np.sum(warped_img_cropped, axis=2) > 0
+        mask_base = np.sum(base_img_cropped, axis=2) > 0
+
+        blended_image = np.zeros_like(warped_img_cropped)
+
+        blended_image[mask_warped] = warped_img_cropped[mask_warped]
+        blended_image[mask_base] = base_img_cropped[mask_base]
 
         # Combine the overlapping regions
         overlap_mask = mask_warped & mask_base
         if np.any(overlap_mask):
+            # Average the overlapping pixels from both images
             blended_image[overlap_mask] = (
-                warped_img[overlap_mask] * 0.5 + base_img[overlap_mask] * 0.5
+                warped_img_cropped[overlap_mask] * 0.5 + base_img_cropped[overlap_mask] * 0.5
             )
 
         return blended_image.astype(np.uint8)
