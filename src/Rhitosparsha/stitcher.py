@@ -3,7 +3,7 @@ import cv2
 import os
 import numpy as np
 
-class PanaromaStitche():
+class PanaromaStitcher():
     def __init__(self):
         pass
 
