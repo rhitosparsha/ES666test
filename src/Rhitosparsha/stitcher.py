@@ -10,7 +10,8 @@ class PanaromaStitcher():
     def detect_and_compute(self, img):
         """Detect keypoints and compute descriptors."""
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        keypoints, descriptors = cv2.SIFT.detectAndCompute(gray_img, None)
+        sift = cv2.SIFT_create()  # Create an instance of SIFT
+        keypoints, descriptors = sift.detectAndCompute(gray_img, None)
         return keypoints, descriptors
 
     def compute_homography(self, src_pts, dst_pts):
@@ -99,7 +100,8 @@ class PanaromaStitcher():
             keypoints_next, descriptors_next = self.detect_and_compute(next_img)
 
             # Match descriptors
-            matches = cv2.BFMatcher.knnMatch(descriptors_base, descriptors_next, k=2)
+            matcher = cv2.BFMatcher()
+            matches = matcher.knnMatch(descriptors_base, descriptors_next, k=2)
 
             # Apply ratio test
             good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
