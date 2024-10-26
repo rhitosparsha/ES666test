@@ -5,13 +5,12 @@ import numpy as np
 
 class PanoramaStitcher():
     def __init__(self):
-        self.sift = cv2.SIFT_create()  # Initialize SIFT feature detector
-        self.matcher = cv2.BFMatcher()  # Initialize Brute Force Matcher
+        pass
 
     def detect_and_compute(self, img):
         """Detect keypoints and compute descriptors."""
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        keypoints, descriptors = self.sift.detectAndCompute(gray_img, None)
+        keypoints, descriptors = cv2.SIFT.detectAndCompute(gray_img, None)
         return keypoints, descriptors
 
     def compute_homography(self, src_pts, dst_pts):
@@ -100,7 +99,7 @@ class PanoramaStitcher():
             keypoints_next, descriptors_next = self.detect_and_compute(next_img)
 
             # Match descriptors
-            matches = self.matcher.knnMatch(descriptors_base, descriptors_next, k=2)
+            matches = cv2.BFMatcher.knnMatch(descriptors_base, descriptors_next, k=2)
 
             # Apply ratio test
             good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
@@ -128,3 +127,4 @@ class PanoramaStitcher():
                 print(f"Not enough matches found between images {i-1} and {i}.")
 
         return stitched_image, homography_matrix_list
+
