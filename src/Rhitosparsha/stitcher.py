@@ -58,16 +58,23 @@ class PanaromaStitcher():
 
         return wa * Ia + wb * Ib + wc * Ic + wd * Id
     
+    def apply_homography(self, points, H):
+        # Manually apply a homography matrix to a set of points
+        points_homogeneous = np.hstack([points, np.ones((points.shape[0], 1))])
+        transformed_points = (H @ points_homogeneous.T).T
+        transformed_points = transformed_points[:, :2] / transformed_points[:, 2, np.newaxis]
+        return transformed_points
+    
     def stitch_images(self, img1, img2, H):
         # Warp img2 to img1 using the homography H and return the stitched result.
         height1, width1 = img1.shape[:2]
         height2, width2 = img2.shape[:2]
         
         corners_img2 = np.float32([[0, 0], [0, height2-1], [width2-1, height2-1], [width2-1, 0]]).reshape(-1, 1, 2)
-        warped_corners = cv2.perspectiveTransform(corners_img2, H)
+        warped_corners = self.apply_homography(corners_img2, H)
         
         # Calculate the bounding box of the resulting panorama
-        all_corners = np.vstack(([[0, 0], [0, height1-1], [width1-1, height1-1], [width1-1, 0]], warped_corners.reshape(-1, 2)))
+        all_corners = np.vstack(([[0, 0], [0, height1-1], [width1-1, height1-1], [width1-1, 0]], warped_corners))
         [x_min, y_min] = np.int32(all_corners.min(axis=0))
         [x_max, y_max] = np.int32(all_corners.max(axis=0))
         
@@ -82,7 +89,10 @@ class PanaromaStitcher():
         
         panorama[translation_dist[1]:translation_dist[1]+height1, translation_dist[0]:translation_dist[0]+width1] = img1
         
-        panorama = np.where(img2_warped > 0, img2_warped, panorama)
+        min_height = min(panorama.shape[0], img2_warped.shape[0])
+        min_width = min(panorama.shape[1], img2_warped.shape[1])
+        
+        panorama[:min_height, :min_width] = np.where(img2_warped[:min_height, :min_width] > 0, img2_warped[:min_height, :min_width], panorama[:min_height, :min_width])
         
         return panorama
 
