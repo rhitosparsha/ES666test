@@ -74,9 +74,8 @@ class PanaromaStitcher():
         warped_corners = self.apply_homography(corners_img2, H)
         
         # Calculate the bounding box of the resulting panorama
-        all_corners = np.vstack((np.float32([[0, 0], [0, height1-1], [width1-1, height1-1], [width1-1, 0]]), warped_corners))
-        if all_corners.ndim == 3:
-            all_corners = all_corners.squeeze()
+        img1_corners = np.float32([[0, 0], [0, height1-1], [width1-1, height1-1], [width1-1, 0]])  # Shape (4, 2)
+        all_corners = np.vstack((img1_corners, warped_corners))  # Shape (8, 2)
         
         [x_min, y_min] = np.int32(all_corners.min(axis=0))
         [x_max, y_max] = np.int32(all_corners.max(axis=0))
