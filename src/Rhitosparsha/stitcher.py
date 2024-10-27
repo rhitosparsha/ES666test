@@ -62,13 +62,26 @@ class PanaromaStitcher():
         # Warp img2 to img1 using the homography H and return the stitched result.
         height1, width1 = img1.shape[:2]
         height2, width2 = img2.shape[:2]
-
-        panorama_size = (width1 + width2, max(height1, height2))
-        img2_warped = self.warp_image(img2, H, panorama_size)
+        
+        corners_img2 = np.float32([[0, 0], [0, height2-1], [width2-1, height2-1], [width2-1, 0]]).reshape(-1, 1, 2)
+        warped_corners = cv2.perspectiveTransform(corners_img2, H)
+        
+        # Calculate the bounding box of the resulting panorama
+        all_corners = np.vstack(([[0, 0], [0, height1-1], [width1-1, height1-1], [width1-1, 0]], warped_corners.reshape(-1, 2)))
+        [x_min, y_min] = np.int32(all_corners.min(axis=0))
+        [x_max, y_max] = np.int32(all_corners.max(axis=0))
+        
+        translation_dist = [-x_min, -y_min]
+        H_translate = np.array([[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]])  # Translation matrix
+        
+        panorama_size = (x_max - x_min, y_max - y_min)
+        
+        img2_warped = self.warp_image(img2, H_translate @ H, panorama_size)
         
         panorama = np.zeros((panorama_size[1], panorama_size[0], 3), dtype=np.uint8)
-        panorama[:height1, :width1] = img1
-
+        
+        panorama[translation_dist[1]:translation_dist[1]+height1, translation_dist[0]:translation_dist[0]+width1] = img1
+        
         panorama = np.where(img2_warped > 0, img2_warped, panorama)
         
         return panorama
