@@ -105,7 +105,8 @@ class PanaromaStitcher():
         
         panorama = np.zeros((panorama_size[1], panorama_size[0], 3), dtype=np.uint8)
         
-        panorama[translation_dist[1]:translation_dist[1]+height1, translation_dist[0]:translation_dist[0]+width1] = img1
+        if (translation_dist[1] < panorama.shape[0] and translation_dist[0] < panorama.shape[1]):
+            panorama[translation_dist[1]:translation_dist[1] + height1, translation_dist[0]:translation_dist[0] + width1] = img1
         
         min_height = min(panorama.shape[0], img2_warped.shape[0])
         min_width = min(panorama.shape[1], img2_warped.shape[1])
