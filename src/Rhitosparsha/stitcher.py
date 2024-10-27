@@ -100,19 +100,21 @@ class PanaromaStitcher():
         img2_warped = self.warp_image(img2, H_translate @ H, panorama_size)
         
         panorama = np.zeros((panorama_size[1], panorama_size[0], 3), dtype=np.uint8)
-        
-        panorama_slice = panorama[translation_dist[1]:translation_dist[1] + height1,
+
+        panorama_slice = panorama[translation_dist[1]:translation_dist[1] + height1, 
                                 translation_dist[0]:translation_dist[0] + width1]
-        
-        panorama_slice[:img1.shape[0], :img1.shape[1]] = img1
-        
-        min_height = min(panorama.shape[0], img2_warped.shape[0])
-        min_width = min(panorama.shape[1], img2_warped.shape[1])
-        
-        panorama[:min_height, :min_width] = np.where(img2_warped[:min_height, :min_width] > 0, 
-                                                    img2_warped[:min_height, :min_width], 
-                                                    panorama[:min_height, :min_width])
-        
+
+        min_height = min(img1.shape[0], panorama_slice.shape[0])
+        min_width = min(img1.shape[1], panorama_slice.shape[1])
+
+        panorama_slice[:min_height, :min_width] = img1[:min_height, :min_width]
+
+        min_height_warped = min(panorama.shape[0], img2_warped.shape[0])
+        min_width_warped = min(panorama.shape[1], img2_warped.shape[1])
+
+        panorama[:min_height_warped, :min_width_warped] = np.where(img2_warped[:min_height_warped, :min_width_warped] > 0,
+                                                                    img2_warped[:min_height_warped, :min_width_warped],
+                                                                    panorama[:min_height_warped, :min_width_warped])
             
         return panorama
 
