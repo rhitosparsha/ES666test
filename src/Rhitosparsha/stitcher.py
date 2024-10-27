@@ -60,7 +60,15 @@ class PanaromaStitcher():
     
     def apply_homography(self, points, H):
         # Manually apply a homography matrix to a set of points
-        points_homogeneous = np.hstack([points, np.ones((points.shape[0], 1))])
+        if points.ndim == 3:
+            points = points[:, :, :2]  # This will keep only the first two dimensions
+
+        # Reshape to ensure it's 2D: (N, 2)
+        if points.ndim == 2 and points.shape[1] == 2:
+            # Good shape, continue
+            points_homogeneous = np.hstack([points, np.ones((points.shape[0], 1))])
+        else:
+            raise ValueError("Points must be of shape (N, 2) or (N, 3) but got shape: {}".format(points.shape))
         transformed_points = (H @ points_homogeneous.T).T
         transformed_points = transformed_points[:, :2] / transformed_points[:, 2, np.newaxis]
         return transformed_points
