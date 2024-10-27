@@ -4,6 +4,7 @@ import glob
 import importlib
 import os
 import cv2
+import traceback
 
 
 
@@ -37,5 +38,5 @@ for idx,algo in enumerate(all_submissions):
             print('\n\n')
 
     except Exception as e:
-        print('Oh No! My implementation encountered this issue\n\t{}'.format(e))
+        print('Oh No! My implementation encountered this issue\n\t{}'.format(traceback.format_exc()))
         print('\n\n')
