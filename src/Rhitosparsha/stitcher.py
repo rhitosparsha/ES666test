@@ -60,8 +60,12 @@ class PanaromaStitcher():
     
     def apply_homography(self, points, H):
         # Manually apply a homography matrix to a set of points
-        if points.ndim == 3:
-            points = points[:, :, :2]  # This will keep only the first two dimensions
+        if points.ndim == 3 and points.shape[1] == 1 and points.shape[2] == 2:
+            points = points.reshape(points.shape[0], 2)  # Reshape to (N, 2)
+
+        # Check if points are now 2D with the expected shape
+        if points.ndim != 2 or points.shape[1] != 2:
+            raise ValueError("Points must be of shape (N, 2) but got shape: {}".format(points.shape))
 
         # Reshape to ensure it's 2D: (N, 2)
         if points.ndim == 2 and points.shape[1] == 2:
