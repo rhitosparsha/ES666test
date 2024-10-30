@@ -176,35 +176,46 @@ class PanaromaStitcher():
         return np.float32(transformed_points)    
 
     def wrap_perspective(self, img, homography_matrix, shape):
+        # Create an output image of appropriate size
         output_img = np.zeros(shape, dtype=np.uint8)
         h, w = img.shape[:2]
-        
+    
         # Create meshgrid for image coordinates
         x_coords, y_coords = np.meshgrid(np.arange(w), np.arange(h))
         ones = np.ones_like(x_coords.flatten())
-        
+    
         # Stack the coordinates and apply homography transformation
         pixel_coords = np.vstack([x_coords.flatten(), y_coords.flatten(), ones])
         transformed_coords = np.dot(homography_matrix, pixel_coords)
         transformed_coords /= transformed_coords[2, :]
-        
+    
         # Ensure valid coordinates
         valid_coords = np.isfinite(transformed_coords[0, :]) & np.isfinite(transformed_coords[1, :])
         x_transformed = np.int32(transformed_coords[0, valid_coords])
         y_transformed = np.int32(transformed_coords[1, valid_coords])
+    
+        # Determine the size of the output image based on valid coordinates
+        x_min, x_max = np.min(x_transformed), np.max(x_transformed)
+        y_min, y_max = np.min(y_transformed), np.max(y_transformed)
         
-        # Check valid_mask dimension to ensure it matches the original image
-        valid_mask = (x_transformed >= 0) & (x_transformed < shape[1]) & (y_transformed >= 0) & (y_transformed < shape[0])
-        
-        # Fix mismatch between valid_mask and the flattened image
-        img_flat = img.reshape(-1, img.shape[2])
-        
+        # Calculate the dimensions for the new image
+        output_h = y_max - y_min + 1
+        output_w = x_max - x_min + 1
+    
+        # Create the output image with the calculated dimensions
+        output_img = np.zeros((output_h, output_w, 3), dtype=np.uint8)
+    
+        # Shift coordinates for placement in the output image
+        x_transformed -= x_min
+        y_transformed -= y_min
+    
         # Apply the valid mask to the flattened image, and ensure the index matches
-        valid_flat_img = img_flat[valid_coords][:len(valid_mask)]
-        
+        img_flat = img.reshape(-1, img.shape[2])
+        valid_flat_img = img_flat[valid_coords]
+    
         # Assign valid transformed pixels to the output image
         output_img[y_transformed[valid_mask], x_transformed[valid_mask]] = valid_flat_img[valid_mask]
-        
+    
         return output_img
 
 
