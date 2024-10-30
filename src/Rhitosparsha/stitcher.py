@@ -195,7 +195,7 @@ class PanaromaStitcher():
         
         # Check valid_mask dimension to ensure it matches the original image
         valid_mask = (x_transformed >= 0) & (x_transformed < shape[1]) & (y_transformed >= 0) & (y_transformed < shape[0])
-    
+        
         # Fix mismatch between valid_mask and the flattened image
         img_flat = img.reshape(-1, img.shape[2])
         
