@@ -175,7 +175,7 @@ class PanaromaStitcher():
             transformed_points.append([[x_/z_, y_/z_]])
         return np.float32(transformed_points)    
 
-   def wrap_perspective(self, img, homography_matrix, shape):
+    def wrap_perspective(self, img, homography_matrix, shape):
         output_img = np.zeros(shape, dtype=np.uint8)
         h, w = img.shape[:2]
         
@@ -206,6 +206,7 @@ class PanaromaStitcher():
         output_img[y_transformed[valid_mask], x_transformed[valid_mask]] = valid_flat_img[valid_mask]
         
         return output_img
+
 
     def format_image(self, img):
         img = cv2.copyMakeBorder(img, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=[0, 0, 0])
