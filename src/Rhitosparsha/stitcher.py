@@ -63,45 +63,33 @@ class PanaromaStitcher():
         return stitched_image, homography_matrix_list
     
     def stitch_images(self, left_img, right_img, transform_left):
-        kp_left, des_left = self.get_keypoints(left_img)
-        kp_right, des_right = self.get_keypoints(right_img)
-
-        matched_points = self.get_matched_points(kp_left, des_left, kp_right, des_right)
-
-        if not self.check_order(matched_points):
-            left_img, right_img = right_img, left_img
-            matched_points[:, [0, 1]] = matched_points[:, [1, 0]]
-            transform_left = not transform_left
-
-        homography_matrix = self.ransac(matched_points)
-        inverse_homography_matrix = np.linalg.inv(homography_matrix)
-
-        right_image_shape = right_img.shape
-        left_image_shape = left_img.shape
-
-        left_image_corners = np.float32([[0, 0], [0, left_image_shape[0]], [left_image_shape[1], left_image_shape[0]], [left_image_shape[1], 0]]).reshape(-1, 1, 2)
-        right_image_corners = np.float32([[0, 0], [0, right_image_shape[0]], [right_image_shape[1], right_image_shape[0]], [right_image_shape[1], 0]]).reshape(-1, 1, 2)
+        # Get the dimensions of both images
+        left_shape = left_img.shape
+        right_shape = right_img.shape
         
-        if transform_left:
-            left_image_corners = self.perspective_transform(left_image_corners, homography_matrix)
-        else:
-            right_image_corners = self.perspective_transform(right_image_corners, inverse_homography_matrix)
-            
-        list_of_points = np.concatenate((left_image_corners, right_image_corners), axis=0)
+        # Define transformation
+        translation_matrix = transform_left
+    
+        # Apply the transformation to the right image
+        transformed_right_img = self.wrap_perspective(right_img, translation_matrix, left_shape)
+    
+        # Create an output image large enough to hold both images
+        output_height = max(left_shape[0], transformed_right_img.shape[0])
+        output_width = left_shape[1] + transformed_right_img.shape[1]  # Width combined
+    
+        output_img = np.zeros((output_height, output_width, 3), dtype=np.uint8)
+    
+        # Position left image in output
+        output_img[0:left_shape[0], 0:left_shape[1]] = left_img
+    
+        # Find the min x and y coordinates of the transformed right image
+        y_min, y_max, x_min, x_max = self.find_min_max_coordinates(transformed_right_img)
+    
+        # Place the transformed right image into the output image
+        output_img[-y_min:y_max - y_min, -x_min:x_max - x_min] = transformed_right_img[y_min:y_max, x_min:x_max]
+    
+        return output_img, translation_matrix
 
-        [x_min, y_min] = np.int32(list_of_points.min(axis=0).ravel() - 0.5)
-        [x_max, y_max] = np.int32(list_of_points.max(axis=0).ravel() + 0.5)
-
-        if transform_left:
-            translation_matrix = (np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])).dot(homography_matrix)
-            output_img = self.wrap_perspective(left_img, translation_matrix, (y_max-y_min, x_max-x_min, 3))
-            output_img[-y_min:right_image_shape[0]-y_min, -x_min:right_image_shape[1]-x_min] = right_img
-            return output_img, homography_matrix, not transform_left
-        else:
-            translation_matrix = (np.array([[1, 0, 0], [0, 1, -y_min], [0, 0, 1]])).dot(inverse_homography_matrix)
-            output_img = self.wrap_perspective(right_img, translation_matrix, (y_max-y_min, x_max-x_min, 3))
-            output_img[-y_min:left_image_shape[0]-y_min, :left_image_shape[1]] = left_img
-            return output_img, inverse_homography_matrix, not transform_left
 
     def get_keypoints(self, img):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
