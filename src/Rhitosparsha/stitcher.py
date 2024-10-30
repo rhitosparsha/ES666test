@@ -175,19 +175,36 @@ class PanaromaStitcher():
             transformed_points.append([[x_/z_, y_/z_]])
         return np.float32(transformed_points)    
 
-    def wrap_perspective(self, img, homography_matrix, shape):
+   def wrap_perspective(self, img, homography_matrix, shape):
         output_img = np.zeros(shape, dtype=np.uint8)
         h, w = img.shape[:2]
+        
+        # Create meshgrid for image coordinates
         x_coords, y_coords = np.meshgrid(np.arange(w), np.arange(h))
         ones = np.ones_like(x_coords.flatten())
+        
+        # Stack the coordinates and apply homography transformation
         pixel_coords = np.vstack([x_coords.flatten(), y_coords.flatten(), ones])
         transformed_coords = np.dot(homography_matrix, pixel_coords)
         transformed_coords /= transformed_coords[2, :]
+        
+        # Ensure valid coordinates
         valid_coords = np.isfinite(transformed_coords[0, :]) & np.isfinite(transformed_coords[1, :])
         x_transformed = np.int32(transformed_coords[0, valid_coords])
         y_transformed = np.int32(transformed_coords[1, valid_coords])
+        
+        # Check valid_mask dimension to ensure it matches the original image
         valid_mask = (x_transformed >= 0) & (x_transformed < shape[1]) & (y_transformed >= 0) & (y_transformed < shape[0])
-        output_img[y_transformed[valid_mask], x_transformed[valid_mask]] = img.flatten()[valid_coords][valid_mask]
+    
+        # Fix mismatch between valid_mask and the flattened image
+        img_flat = img.reshape(-1, img.shape[2])
+        
+        # Apply the valid mask to the flattened image, and ensure the index matches
+        valid_flat_img = img_flat[valid_coords][:len(valid_mask)]
+        
+        # Assign valid transformed pixels to the output image
+        output_img[y_transformed[valid_mask], x_transformed[valid_mask]] = valid_flat_img[valid_mask]
+        
         return output_img
 
     def format_image(self, img):
