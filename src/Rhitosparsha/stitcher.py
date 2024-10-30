@@ -163,48 +163,36 @@ class PanaromaStitcher():
             transformed_points.append([[x_/z_, y_/z_]])
         return np.float32(transformed_points)    
 
-    def wrap_perspective(self, img, homography_matrix, shape):
-        # Create an output image of appropriate size
-        output_img = np.zeros(shape, dtype=np.uint8)
+    def wrap_perspective(self, img, matrix, output_shape):
+        # Get image dimensions
         h, w = img.shape[:2]
     
-        # Create meshgrid for image coordinates
-        x_coords, y_coords = np.meshgrid(np.arange(w), np.arange(h))
-        ones = np.ones_like(x_coords.flatten())
+        # Define the corners of the image
+        corners = np.array([[0, 0, 1],
+                            [w, 0, 1],
+                            [w, h, 1],
+                            [0, h, 1]]).T
     
-        # Stack the coordinates and apply homography transformation
-        pixel_coords = np.vstack([x_coords.flatten(), y_coords.flatten(), ones])
-        transformed_coords = np.dot(homography_matrix, pixel_coords)
-        transformed_coords /= transformed_coords[2, :]
+        # Apply the homography transformation
+        transformed_coords = matrix @ corners
+        transformed_coords /= transformed_coords[2, :]  # Normalize by z-coordinate
     
-        # Ensure valid coordinates
-        valid_coords = np.isfinite(transformed_coords[0, :]) & np.isfinite(transformed_coords[1, :])
-        x_transformed = np.int32(transformed_coords[0, valid_coords])
-        y_transformed = np.int32(transformed_coords[1, valid_coords])
+        # Convert to integer coordinates
+        transformed_coords = np.round(transformed_coords).astype(int)
     
-        # Determine the size of the output image based on valid coordinates
-        x_min, x_max = np.min(x_transformed), np.max(x_transformed)
-        y_min, y_max = np.min(y_transformed), np.max(y_transformed)
-        
-        # Calculate the dimensions for the new image
-        output_h = y_max - y_min + 1
-        output_w = x_max - x_min + 1
+        # Create an output image
+        output_img = np.zeros(output_shape, dtype=img.dtype)
     
-        # Create the output image with the calculated dimensions
-        output_img = np.zeros((output_h, output_w, 3), dtype=np.uint8)
+        # Fill the output image with the input image
+        valid_mask = (transformed_coords[0, :] >= 0) & (transformed_coords[0, :] < output_shape[1]) & \
+                     (transformed_coords[1, :] >= 0) & (transformed_coords[1, :] < output_shape[0])
     
-        # Shift coordinates for placement in the output image
-        x_transformed -= x_min
-        y_transformed -= y_min
-    
-        # Apply the valid mask to the flattened image, and ensure the index matches
-        img_flat = img.reshape(-1, img.shape[2])
-        valid_flat_img = img_flat[valid_coords]
-    
-        # Assign valid transformed pixels to the output image
-        output_img[y_transformed, x_transformed] = valid_flat_img
+        # Update valid coordinates only
+        output_img[transformed_coords[1, valid_mask], transformed_coords[0, valid_mask]] = \
+            img[transformed_coords[1, valid_mask], transformed_coords[0, valid_mask]]
     
         return output_img
+
 
 
     def format_image(self, img):
