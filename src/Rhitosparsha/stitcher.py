@@ -214,7 +214,7 @@ class PanaromaStitcher():
         valid_flat_img = img_flat[valid_coords]
     
         # Assign valid transformed pixels to the output image
-        output_img[y_transformed[valid_mask], x_transformed[valid_mask]] = valid_flat_img[valid_mask]
+        output_img[y_transformed[valid_coords], x_transformed[valid_coords]] = valid_flat_img[valid_coords]
     
         return output_img
 
