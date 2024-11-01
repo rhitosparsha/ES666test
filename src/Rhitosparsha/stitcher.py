@@ -109,7 +109,7 @@ class PanaromaStitcher():
                 # Check if the coordinates are within the bounds of img2
                 if 0 <= x2 < width2 and 0 <= y2 < height2:
                     # Perform bilinear interpolation
-                    panorama[y, x] = bilinear_interpolation(img2, x2, y2)
+                    panorama[y, x] = self.bilinear_interpolation(img2, x2, y2)
 
         return panorama
 
