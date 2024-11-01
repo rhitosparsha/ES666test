@@ -48,7 +48,7 @@ class PanaromaStitcher():
         return H
 
     def warp_images(self, img1, img2, H):
-        """Warp img2 to img1 using the homography matrix H."""
+        """Warp img2 to img1 using the homography matrix H (without cv2.warpPerspective)."""
         height1, width1 = img1.shape[:2]
         height2, width2 = img2.shape[:2]
 
@@ -66,13 +66,54 @@ class PanaromaStitcher():
 
         # Adjust the translation homography
         translation = np.array([[1, 0, -xmin], [0, 1, -ymin], [0, 0, 1]])  # translation matrix
+        H_inv = np.linalg.inv(translation @ H)  # Inverse of the homography
 
-        # Warp the second image and place it in the panorama
-        result = cv2.warpPerspective(img2, translation @ H, (xmax - xmin, ymax - ymin))
-        result[-ymin:height1 - ymin, -xmin:width1 - xmin] = img1
+        # Create an empty image for the panorama
+        panorama_height, panorama_width = ymax - ymin, xmax - xmin
+        panorama = np.zeros((panorama_height, panorama_width, 3), dtype=np.uint8)
 
-        return result
+        # Copy img1 to the panorama at the correct offset
+        panorama[-ymin:height1 - ymin, -xmin:width1 - xmin] = img1
 
+        # Warp img2 to the panorama using the inverse homography matrix
+        for y in range(panorama_height):
+            for x in range(panorama_width):
+                # Transform the panorama coordinates (x, y) back to img2's coordinates
+                warped_point = np.dot(H_inv, np.array([x, y, 1]))
+                warped_point /= warped_point[2]  # Normalize by the homogeneous coordinate
+                x2, y2 = warped_point[0], warped_point[1]
+
+                # Check if the coordinates are within the bounds of img2
+                if 0 <= x2 < width2 and 0 <= y2 < height2:
+                    # Perform bilinear interpolation
+                    panorama[y, x] = bilinear_interpolation(img2, x2, y2)
+
+        return panorama
+
+    def bilinear_interpolation(self, img, x, y):
+        """Performs bilinear interpolation for non-integer pixel coordinates."""
+        x0, y0 = int(np.floor(x)), int(np.floor(y))
+        x1, y1 = x0 + 1, y0 + 1
+
+        # Ensure the coordinates are within the image bounds
+        if x0 >= img.shape[1] - 1 or y0 >= img.shape[0] - 1 or x0 < 0 or y0 < 0:
+            return [0, 0, 0]
+
+        # Get pixel values at the corners
+        I00 = img[y0, x0]
+        I10 = img[y0, x1]
+        I01 = img[y1, x0]
+        I11 = img[y1, x1]
+
+        # Compute the interpolation weights
+        dx = x - x0
+        dy = y - y0
+
+        # Perform bilinear interpolation
+        interpolated = (1 - dx) * (1 - dy) * I00 + dx * (1 - dy) * I10 + (1 - dx) * dy * I01 + dx * dy * I11
+        return interpolated.astype(np.uint8)
+
+    
     def make_panaroma_for_images_in(self, path):
         """Main function to stitch images and return the final panorama and homography matrices."""
         all_images = sorted(glob.glob(path + os.sep + '*'))
