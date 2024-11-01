@@ -21,15 +21,13 @@ for idx,algo in enumerate(all_submissions):
         spec = importlib.util.spec_from_file_location(module_name, filepath)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        PanaromaStitcher = getattr(module, 'PanaromaStitcher')
+        inst = PanaromaStitcher()
 
         ###
-        focal_lengths ={'I1': None, 'I2': 800, 'I3': 650, 'I4': None, 'I5': None, 'I6' : 700}
-        Flags = {'I1': 0, 'I2': 1, 'I3': 1, 'I4': 0, 'I5': 0, 'I6' : 1}
         for impaths in glob.glob(path):
-            PanaromaStitcher = getattr(module, 'PanaromaStitcher')
-            inst = PanaromaStitcher(image_files=impaths, focal_length=focal_lengths[impaths[-2:]], Flag=Flags[impaths[-2:]])
             print('\t\t Processing... {}'.format(impaths))
-            stitched_image, homography_matrix_list = inst.stitch_images()
+            stitched_image, homography_matrix_list = inst.make_panaroma_for_images_in(path=impaths)
 
             outfile =  './results/{}/{}.png'.format(impaths.split(os.sep)[-1],spec.name)
             os.makedirs(os.path.dirname(outfile),exist_ok=True)
