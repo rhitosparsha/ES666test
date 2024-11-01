@@ -113,7 +113,7 @@ class PanaromaStitcher:
         
         return homography_pairs
 
-    def make_panorama_images_in(self, homographies, ref_index):
+    def make_panaroma_images_in(self, homographies, ref_index):
         ref_img = self.images[ref_index]
         panorama = ref_img
         homography_matrix_list = []  # To store all the homography matrices
