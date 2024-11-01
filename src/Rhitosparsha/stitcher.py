@@ -47,6 +47,29 @@ class PanaromaStitcher():
         H /= H[2, 2]
         return H
 
+    def bilinear_interpolation(self, img, x, y):
+        """Performs bilinear interpolation for non-integer pixel coordinates."""
+        x0, y0 = int(np.floor(x)), int(np.floor(y))
+        x1, y1 = x0 + 1, y0 + 1
+
+        # Ensure the coordinates are within the image bounds
+        if x0 >= img.shape[1] - 1 or y0 >= img.shape[0] - 1 or x0 < 0 or y0 < 0:
+            return [0, 0, 0]
+
+        # Get pixel values at the corners
+        I00 = img[y0, x0]
+        I10 = img[y0, x1]
+        I01 = img[y1, x0]
+        I11 = img[y1, x1]
+
+        # Compute the interpolation weights
+        dx = x - x0
+        dy = y - y0
+
+        # Perform bilinear interpolation
+        interpolated = (1 - dx) * (1 - dy) * I00 + dx * (1 - dy) * I10 + (1 - dx) * dy * I01 + dx * dy * I11
+        return interpolated.astype(np.uint8)
+    
     def warp_images(self, img1, img2, H):
         """Warp img2 to img1 using the homography matrix H (without cv2.warpPerspective)."""
         height1, width1 = img1.shape[:2]
@@ -89,29 +112,6 @@ class PanaromaStitcher():
                     panorama[y, x] = bilinear_interpolation(img2, x2, y2)
 
         return panorama
-
-    def bilinear_interpolation(self, img, x, y):
-        """Performs bilinear interpolation for non-integer pixel coordinates."""
-        x0, y0 = int(np.floor(x)), int(np.floor(y))
-        x1, y1 = x0 + 1, y0 + 1
-
-        # Ensure the coordinates are within the image bounds
-        if x0 >= img.shape[1] - 1 or y0 >= img.shape[0] - 1 or x0 < 0 or y0 < 0:
-            return [0, 0, 0]
-
-        # Get pixel values at the corners
-        I00 = img[y0, x0]
-        I10 = img[y0, x1]
-        I01 = img[y1, x0]
-        I11 = img[y1, x1]
-
-        # Compute the interpolation weights
-        dx = x - x0
-        dy = y - y0
-
-        # Perform bilinear interpolation
-        interpolated = (1 - dx) * (1 - dy) * I00 + dx * (1 - dy) * I10 + (1 - dx) * dy * I01 + dx * dy * I11
-        return interpolated.astype(np.uint8)
 
     
     def make_panaroma_for_images_in(self, path):
