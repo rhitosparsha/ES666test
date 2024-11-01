@@ -23,7 +23,7 @@ for idx,algo in enumerate(all_submissions):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         PanaromaStitcher = getattr(module, 'PanaromaStitcher')
-        inst = PanaromaStitcher()
+        inst = PanaromaStitcher(image_files=impaths, focal_length=focal_lengths[impaths[-2:]], Flag=Flags[impaths[-2:]])
 
         ###
         for impaths in glob.glob(path):
