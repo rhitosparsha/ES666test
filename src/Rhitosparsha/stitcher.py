@@ -34,14 +34,14 @@ class PanaromaStitcher():
         index_left = mid_image - 1
         index_right = mid_image + 1
 
-        while num_images_stitched != len(img_list):
+        while num_images_stitched!=len(img_list):
             if transform_left:
-                if index_left < 0:
+                if index_left<0:
                     break
                 output_img, homography_matrix, transform_left = self.stitch_images(img_list[index_left], stitched_image, transform_left)
                 index_left -= 1
             else:
-                if index_right >= len(img_list):
+                if index_right>=len(img_list):
                     break
                 output_img, homography_matrix, transform_left = self.stitch_images(stitched_image, img_list[index_right], transform_left)
                 index_right += 1
@@ -49,8 +49,8 @@ class PanaromaStitcher():
             homography_matrix_list.append(homography_matrix)
             num_images_stitched += 1
 
-        if num_images_stitched != len(img_list):
-            if index_left >= 0:
+        if num_images_stitched!=len(img_list):
+            if index_left>=0:
                 for i in range(index_left, -1, -1):
                     output_img, homography_matrix, transform_left = self.stitch_images(img_list[i], stitched_image, transform_left)
                     stitched_image = output_img
@@ -65,7 +65,7 @@ class PanaromaStitcher():
 
         stitched_image = self.format_image(stitched_image)
         return stitched_image, homography_matrix_list 
-
+    
     def stitch_images(self, left_img, right_img, transform_left):
         kp_left, des_left = self.get_keypoints(left_img)
         kp_right, des_right = self.get_keypoints(right_img)
@@ -130,8 +130,12 @@ class PanaromaStitcher():
         avg_x_img1 = np.mean(matches[:, 0, 0])
         avg_x_img2 = np.mean(matches[:, 1, 0])
 
-        return avg_x_img1 > avg_x_img2
+        if avg_x_img1 > avg_x_img2:
+            return True
+        else:
+            return False
 
+    
     def ransac(self, matches):
         most_inliers = 0
         best_homography_matrix = None
@@ -186,20 +190,26 @@ class PanaromaStitcher():
         pixel_coords = np.vstack([x_coords.flatten(), y_coords.flatten(), ones])
         transformed_coords = np.dot(homography_matrix, pixel_coords)
         transformed_coords /= transformed_coords[2, :]
-        x_transformed = transformed_coords[0, :].reshape(h, w)
-        y_transformed = transformed_coords[1, :].reshape(h, w)
-
-        valid_x = np.isfinite(x_transformed)
-        valid_y = np.isfinite(y_transformed)
-        valid_coords = valid_x & valid_y
-        x_transformed = np.clip(x_transformed, 0, shape[1]-1).astype(np.int32)
-        y_transformed = np.clip(y_transformed, 0, shape[0]-1).astype(np.int32)
-        output_img[y_transformed[valid_coords], x_transformed[valid_coords]] = img[valid_coords]
+        valid_coords = np.isfinite(transformed_coords[0, :]) & np.isfinite(transformed_coords[1, :])
+        x_transformed = np.int32(transformed_coords[0, valid_coords])
+        y_transformed = np.int32(transformed_coords[1, valid_coords])
+        valid_mask = (x_transformed >= 0) & (x_transformed < shape[1]) & (y_transformed >= 0) & (y_transformed < shape[0])
+        x_valid = x_transformed[valid_mask]
+        y_valid = y_transformed[valid_mask]
+        output_img[y_valid, x_valid] = img[y_coords.flatten()[valid_mask], x_coords.flatten()[valid_mask]]
         return output_img
-
-    def format_image(self, img):
-        grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(grayscale, 1, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        x, y, w, h = cv2.boundingRect(contours[0])
-        return img[y:y+h, x:x+w]
+    
+    def format_image(self, image):
+        black_mask = cv2.inRange(image, (0, 0, 0), (0, 0, 0))
+        non_black_mask = cv2.inRange(image, (1, 1, 1), (255, 255, 255))
+        kernel = np.ones((10, 10), np.uint8)
+        dilated_non_black_mask = cv2.dilate(non_black_mask, kernel, iterations=1)
+        inpaint_mask = cv2.bitwise_and(black_mask, dilated_non_black_mask)
+        inpainted_image = cv2.inpaint(image, inpaint_mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
+        coords = np.argwhere(dilated_non_black_mask)
+        y_min, x_min = coords.min(axis=0)
+        y_max, x_max = coords.max(axis=0)
+        cropped_image = inpainted_image[y_min:y_max+1, x_min:x_max+1]
+        return cropped_image
+  
+         
