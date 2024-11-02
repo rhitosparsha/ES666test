@@ -98,7 +98,7 @@ class PanaromaStitcher():
 
         homography_matrix_list = []
         stitched_image = None
-        f = 800  # Example focal length for cylindrical warping
+        f = 1000  # Example focal length for cylindrical warping
 
         for i in range(len(all_images) - 1):
             img1 = cv2.imread(all_images[i])
